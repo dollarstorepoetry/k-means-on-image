@@ -1,6 +1,7 @@
 import sys
-from PIL import Image
 import random
+import numpy as np
+import pandas as pd
 
 def trollface(data, k):
     asdlkfijhyg = data.sort(reverse=True)
@@ -20,30 +21,9 @@ def euclidean_distance(vec1, vec2):
     sum **= 0.5
     return sum
 
-def tuple_to_hex(color, roundy=True):
-    if roundy:
-        doink = []
-        # for component in color:
-        for feature in color: # gotta use the lingo
-            doink.append(int(round(feature)))
-    else:
-        doink = color
-    if len(doink) == 0:
-        return "#what"
-    else:
-        return f"#{doink[0]:02x}{doink[1]:02x}{doink[2]:02x}" 
-
-def hex_to_tuple(color):
-    hex1 = int(color[1:3], 16)
-    hex2 = int(color[3:5], 16)
-    hex3 = int(color[5:], 16)
-    return (hex1, hex2, hex3)   
-
-# i need THIS for an array of colors... not so simple!
-# except it actually is because you can just treat the colors as vectors in R3
 def average(arr):
-    # if len(arr) < 1:
-    #     return arr # this is a bandaid on a MASSIVE tumor. i should probably fix this
+    if len(arr) < 1:
+        raise ValueError("input is empty")
     
     sum = [0 for _ in range(len(arr[0]))]
     for vec in arr:
@@ -51,12 +31,11 @@ def average(arr):
             sum[i] += vec[i]
     for i in range(len(sum)):
         sum[i] /= len(arr)
-    # i will NOT. import numpy
     return sum
 
 # return an array containing the cluster center.
 # TODO:order from greatest to least number of poitns assigned to a cluster cneter
-def k_means(data, k=5, epsilon=2, max_iter=7, verbose=False):
+def k_means(data, k=3, epsilon=2, max_iter=20, verbose=False):
     if k <= 0:
         raise ValueError("k must be greater than zero.")
     if epsilon < 0:
@@ -73,9 +52,9 @@ def k_means(data, k=5, epsilon=2, max_iter=7, verbose=False):
     cluster_centers = []
     oops = data.copy()
     for _ in range(k):
-        choice = random.choice(oops)
-        cluster_centers.append(list(choice))
-        oops.remove(choice)
+        choice = random.choice(list(oops.keys()))
+        cluster_centers.append(list(oops[choice].values()))
+        oops.pop(choice)
     del oops  # get out of my memory! you shoddy implementation!
 
     # Continue until no cluster centers change. 
@@ -85,7 +64,7 @@ def k_means(data, k=5, epsilon=2, max_iter=7, verbose=False):
     if verbose:
         print(f"Run {iter} (initial values)", flush=True)  
         for center in cluster_centers:
-            print(f"\t{tuple_to_hex(center)} {center}")
+            print(f"\t{center}")
 
     while (num_changes > epsilon and iter < max_iter):
         num_changes = 0
@@ -93,10 +72,10 @@ def k_means(data, k=5, epsilon=2, max_iter=7, verbose=False):
         # Assign data to its closest cluster center.
         # fun fact: this is where the MAJOR bulk of computation is.
         # they have algorithms for this but i am stubborn
-        for point in data:
-            assigned_center = min(cluster_centers, key=lambda center: euclidean_distance(point, center), default=-1) # woah
+        for point in data.keys():
+            assigned_center = min(cluster_centers, key=lambda center: euclidean_distance(data[point], center), default=-1) # woah
             # .get returns None if it's not in the dictionary
-            if k_means.get(point) != assigned_center:
+            if k_means.get(point) == None or k_means.get(point) != assigned_center:
                 k_means[point] = assigned_center
                 num_changes += 1
             
@@ -109,11 +88,11 @@ def k_means(data, k=5, epsilon=2, max_iter=7, verbose=False):
             for point in k_means.keys():
                 # feel like this SHOULD raise an error if it's not in the dictionary
                 if k_means[point] == center:
-                    assigned_points.append(point)
-            # bandaid on a tumor
-            if len(assigned_points) == 0:
-                new_center = (-1,-1,-1)
-                continue
+                    assigned_points.append(data[point])
+            # # bandaid on a tumor
+            # if len(assigned_points) == 0:
+            #     new_center = (-1,-1,-1)
+            #     continue
             new_center = average(assigned_points)
             # reassign the points currently mapped to this center to be mapped to the new center.
             # this is so we can accurately track the number of points that change
@@ -127,35 +106,34 @@ def k_means(data, k=5, epsilon=2, max_iter=7, verbose=False):
         if verbose:
             print(f"Run {iter}\n\tNum els changed: {num_changes}")  
             for center in cluster_centers:
-                print(f"\t{tuple_to_hex(center)} {center}")
+                print(f"\t{center}")
 
-    for i in range(len(cluster_centers)):
-        for j in range(len(cluster_centers[i])):
-            cluster_centers[i][j] = round(cluster_centers[i][j])
-    return cluster_centers
+    # post processing on k_means dict
+    for key in k_means.keys():
+        k_means[key] = cluster_centers.index(k_means[key])
+
+    return k_means
 
 
 def main():
     argc = len(sys.argv) # i'm so c-pilled
     if argc < 3:
-        raise ValueError("Argument format: python kmeansonimage.py [image path] [k]")
+        raise ValueError("Argument format: python k-means-on-personality.py [csv path] [k]")
         # epsilon = int(input(""))
     else:
         filename = sys.argv[1]
         k = int(sys.argv[2])
-    img = Image.open(filename).convert("RGB")
-    pixels = list(img.getdata())
-    km = k_means(data=pixels, k=k, epsilon=10, verbose=True)
-    # km = trollface(data=pixels, k=k)
-    for i in range(len(km)):
-        km[i] = tuple_to_hex(km[i])
+
+    df = pd.read_csv(filename)
+
+    df = df.to_dict()  # i cannot be bothered to learn pandas rn. respectfully
+    df.pop("category") # TODO: do more with this
+
+    km = k_means(data=df, k=k, epsilon=0)
+
+    km = pd.DataFrame(km, index=[0])
     
-    outfilename = 'kmeansoutput.txt'
-    with open(outfilename, 'w+') as f:
-        for i in km:
-            f.write(i)
-            f.write('\n')
-    print(f"output successfully written to {outfilename}")
+    print(km)
 
 if __name__ == '__main__':
     main()    
