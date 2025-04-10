@@ -21,6 +21,22 @@ def euclidean_distance(vec1, vec2):
     sum **= 0.5
     return sum
 
+def average_difference(vec1, vec2):
+    if len(vec1) != len(vec2):
+        raise ValueError("come on now")
+
+    sum = 0
+    for i in range(len(vec1)):
+        sum += (vec1[i] - vec2[i]) if vec1[i] > vec2[i] else (vec2[i] - vec1[i])
+    return sum/len(vec1)
+
+def bigdista(vec1, vec2, choice=0):
+    if choice == 0:
+        return euclidean_distance(vec1, vec2)
+    elif choice == 1:
+        return average_difference(vec1, vec2)
+    raise ValueError("what") 
+
 def average(arr):
     if len(arr) < 1:
         raise ValueError("input is empty")
@@ -33,9 +49,13 @@ def average(arr):
         sum[i] /= len(arr)
     return sum
 
+def clean_data(df, header):
+    if (header in df.to_dict().keys()):
+        df.drop(header, inplace=True, axis=1) 
+
 # return an array containing the cluster center.
 # TODO:order from greatest to least number of poitns assigned to a cluster cneter
-def k_means(data, k=3, epsilon=2, max_iter=20, verbose=False):
+def k_means(data, k=3, epsilon=0, max_iter=20, verbose=False):
     if k <= 0:
         raise ValueError("k must be greater than zero.")
     if epsilon < 0:
@@ -61,10 +81,16 @@ def k_means(data, k=3, epsilon=2, max_iter=20, verbose=False):
     k_means = dict()
     num_changes = epsilon+1
     iter = 0
-    if verbose:
-        print(f"Run {iter} (initial values)", flush=True)  
-        for center in cluster_centers:
-            print(f"\t{center}")
+    # if verbose:
+        # print(f"Run {iter} (initial values)", flush=True)  
+        # for center in cluster_centers:
+            # print(f"\t{center}")
+
+    woof = []
+    for i in data.keys():
+        if list(data[i].values()) in cluster_centers:
+            woof.append(i)
+    print(f"Initial seeds: {woof}")
 
     while (num_changes > epsilon and iter < max_iter):
         num_changes = 0
@@ -73,7 +99,7 @@ def k_means(data, k=3, epsilon=2, max_iter=20, verbose=False):
         # fun fact: this is where the MAJOR bulk of computation is.
         # they have algorithms for this but i am stubborn
         for point in data.keys():
-            assigned_center = min(cluster_centers, key=lambda center: euclidean_distance(data[point], center), default=-1) # woah
+            assigned_center = min(cluster_centers, key=lambda center: bigdista(data[point], center), default=-1) # woah
             # .get returns None if it's not in the dictionary
             if k_means.get(point) == None or k_means.get(point) != assigned_center:
                 k_means[point] = assigned_center
@@ -125,13 +151,17 @@ def main():
         k = int(sys.argv[2])
 
     df = pd.read_csv(filename)
+    for header in {'category', 'category.1', 'Unnamed: 0', 'Unnamed: 0.1'}:
+        clean_data(df, header)
 
-    df = df.to_dict()  # i cannot be bothered to learn pandas rn. respectfully
-    df.pop("category") # TODO: do more with this
+    # df = df.to_dict()  # i cannot be bothered to learn pandas rn. respectfully
+    # df.pop("category") # TODO: do more with this
 
-    km = k_means(data=df, k=k, epsilon=0)
+    df = df.to_dict()
 
-    km = pd.DataFrame(km, index=[0])
+    km = k_means(data=df, k=k)
+
+    km = pd.DataFrame(km, index=[0]).T
     
     print(km)
 

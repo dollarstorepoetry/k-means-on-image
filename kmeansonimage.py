@@ -56,7 +56,7 @@ def average(arr):
 
 # return an array containing the cluster center.
 # TODO:order from greatest to least number of poitns assigned to a cluster cneter
-def k_means(data, k=5, epsilon=2, max_iter=7, verbose=False):
+def k_means(data, k=5, epsilon=2, max_iter=100, verbose=False):
     if k <= 0:
         raise ValueError("k must be greater than zero.")
     if epsilon < 0:
@@ -74,7 +74,7 @@ def k_means(data, k=5, epsilon=2, max_iter=7, verbose=False):
     oops = data.copy()
     for _ in range(k):
         choice = random.choice(oops)
-        print(type(choice))
+        # print(type(choice))
         cluster_centers.append(choice)
         np.delete(oops, choice)
     del oops  # get out of my memory! you shoddy implementation!
@@ -98,7 +98,7 @@ def k_means(data, k=5, epsilon=2, max_iter=7, verbose=False):
             pt = tuple(point)
             assigned_center = min(cluster_centers, key=lambda center: euclidean_distance(point, center), default=-1) # woah
             # .get returns None if it's not in the dictionary
-            if k_means.get(pt) == None or k_means.get(pt) != assigned_center.all():
+            if k_means.get(pt) is None or not np.array_equal(k_means.get(pt), assigned_center):
                 k_means[pt] = assigned_center
                 num_changes += 1
             
@@ -111,7 +111,7 @@ def k_means(data, k=5, epsilon=2, max_iter=7, verbose=False):
             for point in k_means.keys():
                 # feel like this SHOULD raise an error if it's not in the dictionary
                 pt = tuple(point)
-                if k_means[pt] == center:
+                if np.array_equal(k_means[pt], center):
                     assigned_points.append(point)
             # bandaid on a tumor
             if len(assigned_points) == 0:
@@ -122,7 +122,7 @@ def k_means(data, k=5, epsilon=2, max_iter=7, verbose=False):
             # this is so we can accurately track the number of points that change
             for point in k_means.keys():
                 pt = tuple(point)
-                if k_means[pt] == center:
+                if np.array_equal(k_means[pt], center):
                     k_means[pt] = new_center
             cluster_centers[i] = new_center
         
@@ -147,14 +147,16 @@ def main():
     else:
         filename = sys.argv[1]
         k = int(sys.argv[2])
-    img = Image.open(filename).convert("RGB")
+    # img = Image.open(filename).convert("RGB")
+    img = Image.open(filename).resize((100,100)).convert("RGB") # wow!
+    # lesson #1 in machine learning: if you can preserve the integrity of the data by doing so, reduce the size of the data whenever possible
     pixels = np.array(img.getdata())
-    km = k_means(data=pixels, k=k, epsilon=10, verbose=True)
+    km = k_means(data=pixels, k=k, epsilon=0, verbose=True)
     # km = trollface(data=pixels, k=k)
     for i in range(len(km)):
         km[i] = tuple_to_hex(km[i])
     
-    outfilename = 'kmeansoutput.txt'
+    outfilename = 'k-means-output.txt'
     with open(outfilename, 'w+') as f:
         for i in km:
             f.write(i)
