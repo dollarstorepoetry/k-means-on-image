@@ -56,7 +56,7 @@ def average(arr):
 
 # return an array containing the cluster center.
 # TODO:order from greatest to least number of poitns assigned to a cluster cneter
-def k_means(data, k=5, epsilon=2, max_iter=100, verbose=False):
+def k_means(data, k=5, epsilon=0, max_iter=100, verbose=False):
     if k <= 0:
         raise ValueError("k must be greater than zero.")
     if epsilon < 0:
@@ -149,9 +149,11 @@ def main():
         k = int(sys.argv[2])
     # img = Image.open(filename).convert("RGB")
     img = Image.open(filename).resize((100,100)).convert("RGB") # wow!
-    # lesson #1 in machine learning: if you can preserve the integrity of the data by doing so, reduce the size of the data whenever possible
+    # lesson #1 in machine learning: 
+    # if you can preserve the integrity of the data by doing so, 
+    # reduce the size of the data whenever possible
     pixels = np.array(img.getdata())
-    km = k_means(data=pixels, k=k, epsilon=0, verbose=True)
+    km = k_means(data=pixels, k=k, verbose=True)
     # km = trollface(data=pixels, k=k)
     for i in range(len(km)):
         km[i] = tuple_to_hex(km[i])
